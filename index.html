@@ -2,26 +2,49 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Remotion-Style 数据动效生成器</title>
+    <title>Remotion Data Anim - GitHub Preview</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap');
-        body { background-color: #050505; color: #fff; font-family: 'Space Grotesk', sans-serif; }
-        .canvas-area { width: 1280px; height: 720px; background: #000; position: relative; overflow: hidden; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        body { 
+            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
+            margin: 0; 
+            overflow: hidden; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh;
+        }
+        /* 模拟视频容器预览 */
+        #canvas-wrapper {
+            width: 1280px;
+            height: 720px;
+            background: #000;
+            position: relative;
+            transform: scale(0.6); /* 缩小显示以适应屏幕 */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
     </style>
 </head>
 <body>
+    <div id="no-js-hint" style="color: white; font-family: sans-serif; position: absolute;">
+        正在加载动效引擎，请稍候... (如果长时间全黑，请检查网络)
+    </div>
+
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { motion, useTime, useTransform } = FramerMotion;
+        // 隐藏提示
+        document.getElementById('no-js-hint').style.display = 'none';
 
-        // --- 模拟 Remotion 工具函数 ---
+        const { useState, useEffect } = React;
+        const { motion, AnimatePresence } = FramerMotion;
+
+        // --- Remotion 核心算法：插值函数 ---
         const interpolate = (frame, input, output) => {
             const [inMin, inMax] = input;
             const [outMin, outMax] = output;
@@ -31,101 +54,76 @@
             return outMin + (outMax - outMin) * progress;
         };
 
-        // 1. Remotion 风格的滚动数字组件
-        const RemotionNumber = ({ frame, startFrame, duration, from, to }) => {
-            // 使用线性插值模拟数值滚动
-            const rawValue = interpolate(frame, [startFrame, startFrame + duration], [from, to]);
-            const displayValue = Math.floor(rawValue).toLocaleString();
-
-            return (
-                <div style={{ fontSize: '120px', fontWeight: 'bold', color: '#00f2ff', textShadow: '0 0 20px rgba(0,242,255,0.5)' }}>
-                    {displayValue}
-                </div>
-            );
-        };
-
-        // 2. 箭头生长动画 (SVG Path Trim)
-        const RemotionArrow = ({ frame, startFrame }) => {
-            const progress = interpolate(frame, [startFrame, startFrame + 30], [0, 1]);
-            
-            return (
-                <svg width="200" height="200" viewBox="0 0 100 100">
-                    <path
-                        d="M20 50 L80 50 M60 30 L80 50 L60 70"
-                        stroke="#00f2ff"
-                        strokeWidth="6"
-                        fill="none"
-                        strokeDasharray="100"
-                        strokeDashoffset={100 - (progress * 100)}
-                        strokeLinecap="round"
-                    />
-                </svg>
-            );
-        };
-
-        // 主应用：模拟视频时间轴
         const App = () => {
             const [frame, setFrame] = useState(0);
             const fps = 30;
-            const totalFrames = 150; // 5秒视频
+            const durationFrames = 150; // 5秒
 
-            // 自动播放预览逻辑 (模拟 Remotion 播放器)
             useEffect(() => {
-                const interval = setInterval(() => {
-                    setFrame(f => (f + 1) % totalFrames);
+                const timer = setInterval(() => {
+                    setFrame(prev => (prev + 1) % durationFrames);
                 }, 1000 / fps);
-                return () => clearInterval(interval);
+                return () => clearInterval(timer);
             }, []);
 
+            // 计算当前数字（从 0 到 99,840）
+            const currentNum = Math.floor(interpolate(frame, [10, 80], [0, 99840]));
+            // 计算箭头生长进度
+            const pathProgress = interpolate(frame, [20, 50], [0, 1]);
+
             return (
-                <div className="flex flex-col items-center justify-center min-h-screen p-4">
-                    <div className="mb-6 text-center">
-                        <h1 className="text-2xl font-bold text-cyan-400">Remotion Claude.MD 风格生成器</h1>
-                        <p className="text-gray-400 text-sm">当前渲染帧: {frame} / {totalFrames} (FPS: {fps})</p>
-                    </div>
+                <div className="flex flex-col items-center">
+                    <div id="canvas-wrapper">
+                        {/* 场景层 */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-20">
+                            
+                            {/* 1. AE 风格滚动数字 */}
+                            <motion.div 
+                                style={{ 
+                                    fontSize: '140px', 
+                                    fontWeight: '900', 
+                                    fontFamily: 'monospace',
+                                    color: '#22d3ee',
+                                    textShadow: '0 0 30px rgba(34,211,238,0.4)'
+                                }}
+                            >
+                                {currentNum.toLocaleString()}
+                            </motion.div>
 
-                    {/* 模拟视频合成器 (Composition) */}
-                    <div className="canvas-area scale-[0.6] origin-center rounded-xl border border-white/10">
-                        {/* 场景1: 数据激增 */}
-                        {frame >= 0 && frame < 90 && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                <span className="text-gray-500 mb-4 tracking-[0.2em]">CORE DATA ACCELERATION</span>
-                                <RemotionNumber frame={frame} startFrame={10} duration={60} from={0} to={98420} />
-                                <div className="mt-8">
-                                    <RemotionArrow frame={frame} startFrame={20} />
-                                </div>
+                            {/* 2. 动态生长箭头 */}
+                            <svg width="200" height="100" viewBox="0 0 100 50" className="mt-10">
+                                <path
+                                    d="M10 25 L90 25 M75 10 L90 25 L75 40"
+                                    fill="none"
+                                    stroke="#22d3ee"
+                                    strokeWidth="5"
+                                    strokeDasharray="100"
+                                    strokeDashoffset={100 - (pathProgress * 100)}
+                                    strokeLinecap="round"
+                                />
+                            </svg>
+
+                            {/* 底部装饰 */}
+                            <div className="absolute bottom-10 left-10 text-cyan-900 font-bold tracking-widest uppercase">
+                                Remote Generation Active // Frame: {frame}
                             </div>
-                        )}
-
-                        {/* 场景2: 结束展示 (通过帧范围控制，类似 Remotion Sequence) */}
-                        {frame >= 90 && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-cyan-500">
-                                <motion.div 
-                                    initial={{ opacity: 0, scale: 0.5 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="text-black text-6xl font-black"
-                                >
-                                    MISSION COMPLETE
-                                </motion.div>
-                            </div>
-                        )}
-
-                        {/* 扫描线 AE 特效 */}
-                        <div className="absolute inset-0 pointer-events-none opacity-20" 
-                             style={{ background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))', backgroundSize: '100% 2px, 3px 100%' }}>
                         </div>
+
+                        {/* 模拟 AE 扫描线叠加层 */}
+                        <div className="absolute inset-0 pointer-events-none border-[20px] border-white/5 opacity-30"></div>
                     </div>
 
-                    <div className="mt-10 w-[768px]">
+                    {/* 控制台操作区 */}
+                    <div className="mt-8 bg-slate-800/50 p-6 rounded-2xl border border-white/10 w-full max-w-2xl">
                         <input 
-                            type="range" min="0" max={totalFrames-1} value={frame} 
+                            type="range" min="0" max={durationFrames - 1} value={frame}
                             onChange={(e) => setFrame(parseInt(e.target.value))}
-                            className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+                            className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
                         />
-                        <div className="flex justify-between mt-2 text-xs text-gray-500">
-                            <span>0s</span>
-                            <span>时间轴拖动预览 (Manual Scrubbing)</span>
-                            <span>5s</span>
+                        <div className="flex justify-between mt-4 text-cyan-200/50 font-mono text-xs">
+                            <span>TIMELINE: 00:00</span>
+                            <span className="text-cyan-400">STATUS: PREVIEWING FRAME {frame}</span>
+                            <span>00:05</span>
                         </div>
                     </div>
                 </div>
