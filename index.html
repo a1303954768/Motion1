@@ -1,1 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickAnim - 数据动效生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
+        body { background-color: #0f172a; color: white; }
+        .font-mono-data { font-family: 'JetBrains Mono', monospace; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { motion, animate, useMotionValue, useTransform } = FramerMotion;
+
+        // 1. 滚动数字组件
+        const RollingNumber = ({ from = 0, to = 1000, duration = 2 }) => {
+            const count = useMotionValue(from);
+            const [display, setDisplay] = useState(from);
+
+            useEffect(() => {
+                const controls = animate(count, to, {
+                    duration: duration,
+                    ease: "circOut",
+                    onUpdate: (latest) => setDisplay(Math.floor(latest))
+                });
+                return () => controls.stop();
+            }, [from, to]);
+
+            return <span className="font-mono-data text-5xl text-blue-400">{display.toLocaleString()}</span>;
+        };
+
+        // 2. 箭头生长组件
+        const AnimatedArrow = () => (
+            <svg width="100" height="100" viewBox="0 0 100 100" fill="none">
+                <motion.path
+                    d="M10 50 L90 50 M70 30 L90 50 L70 70"
+                    stroke="#60a5fa"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
+                />
+            </svg>
+        );
+
+        // 3. 进场反馈动效 (AE 常见的 Scale Bounce)
+        const BounceBox = () => (
+            <motion.div
+                className="w-20 h-20 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-2xl"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                whileHover={{ scale: 1.1 }}
+            />
+        );
+
+        // 主应用
+        const App = () => {
+            const [key, setKey] = useState(0); // 用于刷新动画状态
+
+            return (
+                <div className="min-h-screen p-8">
+                    <header className="max-w-6xl mx-auto mb-12 flex justify-between items-center">
+                        <div>
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+                                QuickAnim Generator
+                            </h1>
+                            <p className="text-slate-400 mt-2">AE 风格数据动效预览与快速生成</p>
+                        </div>
+                        <button 
+                            onClick={() => setKey(prev => prev + 1)}
+                            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-full transition-all active:scale-95"
+                        >
+                            重播所有动画
+                        </button>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" key={key}>
+                        {/* 数字滚动卡片 */}
+                        <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                            <h3 className="text-sm text-slate-500 mb-4 uppercase tracking-widest">Rolling Numbers</h3>
+                            <div className="h-32 flex items-center justify-center">
+                                <RollingNumber from={0} to={85420} />
+                            </div>
+                            <div className="mt-4 text-xs text-slate-500 font-mono">Ease: CircOut | Duration: 2s</div>
+                        </div>
+
+                        {/* 箭头指向卡片 */}
+                        <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                            <h3 className="text-sm text-slate-500 mb-4 uppercase tracking-widest">Path Animation</h3>
+                            <div className="h-32 flex items-center justify-center">
+                                <AnimatedArrow />
+                            </div>
+                            <div className="mt-4 text-xs text-slate-500 font-mono">Stroke Interpolation</div>
+                        </div>
+
+                        {/* 弹性交互卡片 */}
+                        <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700">
+                            <h3 className="text-sm text-slate-500 mb-4 uppercase tracking-widest">Spring Physics</h3>
+                            <div className="h-32 flex items-center justify-center">
+                                <BounceBox />
+                            </div>
+                            <div className="mt-4 text-xs text-slate-500 font-mono">Type: Spring | Stiffness: 260</div>
+                        </div>
+
+                        {/* 加载条动画 */}
+                        <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 col-span-1 md:col-span-2">
+                            <h3 className="text-sm text-slate-500 mb-4 uppercase tracking-widest">Data Loading Bar</h3>
+                            <div className="h-32 flex flex-col justify-center px-10">
+                                <div className="w-full bg-slate-900 h-4 rounded-full overflow-hidden">
+                                    <motion.div 
+                                        className="h-full bg-blue-500"
+                                        initial={{ width: "0%" }}
+                                        animate={{ width: "88%" }}
+                                        transition={{ duration: 1.5, ease: "anticipate" }}
+                                    />
+                                </div>
+                                <div className="mt-2 text-right text-blue-400 font-mono">88%</div>
+                            </div>
+                        </div>
+                    </main>
+
+                    <footer className="max-w-6xl mx-auto mt-20 border-t border-slate-800 pt-8 text-center text-slate-600">
+                        <p>将动效应用于你的项目：直接在代码中调整 Transition 参数</p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
