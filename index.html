@@ -2,136 +2,127 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>Remotion Data Anim - GitHub Preview</title>
+    <title>QuickAnim - 极速动效生成器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700&display=swap');
         body { 
-            background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); 
-            margin: 0; 
-            overflow: hidden; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
+            background: radial-gradient(circle at center, #1e293b 0%, #050505 100%); 
+            color: #fff;
             height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            overflow: hidden;
         }
-        /* 模拟视频容器预览 */
-        #canvas-wrapper {
+        /* 预览画布 */
+        #canvas {
             width: 1280px;
             height: 720px;
-            background: #000;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid rgba(34, 211, 238, 0.2);
             position: relative;
-            transform: scale(0.6); /* 缩小显示以适应屏幕 */
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255,255,255,0.1);
+            transform: scale(0.6);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 100px rgba(0,0,0,0.5);
+        }
+        /* 数字样式 */
+        #number-display {
+            font-size: 160px;
+            font-weight: bold;
+            color: #22d3ee;
+            text-shadow: 0 0 40px rgba(34, 211, 238, 0.4);
+        }
+        /* 控制条样式 */
+        .controls {
+            width: 800px;
+            margin-top: -100px;
+            z-index: 10;
+        }
+        input[type=range] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: #22d3ee;
         }
     </style>
 </head>
 <body>
-    <div id="no-js-hint" style="color: white; font-family: sans-serif; position: absolute;">
-        正在加载动效引擎，请稍候... (如果长时间全黑，请检查网络)
+
+    <div id="canvas">
+        <div id="number-display">0</div>
+        <svg width="200" height="100" viewBox="0 0 100 50">
+            <path id="arrow-path" d="M10 25 L90 25 M75 10 L90 25 L75 40" 
+                  stroke="#22d3ee" stroke-width="5" fill="none" stroke-linecap="round" />
+        </svg>
+        <div style="margin-top: 40px; color: #164e63; letter-spacing: 5px;">DATA ANALYTICS // AE ENGINE</div>
     </div>
 
-    <div id="root"></div>
+    <div class="controls">
+        <input type="range" id="frame-slider" min="0" max="150" value="0">
+        <div style="display: flex; justify-content: space-between; color: #64748b; font-size: 12px; margin-top: 10px;">
+            <span>START: 0F</span>
+            <span id="frame-counter" style="color: #22d3ee;">FRAME: 0</span>
+            <span>END: 150F</span>
+        </div>
+    </div>
 
-    <script type="text/babel">
-        // 隐藏提示
-        document.getElementById('no-js-hint').style.display = 'none';
+    <script>
+        // --- 核心逻辑：原生 JS 驱动 ---
+        const slider = document.getElementById('frame-slider');
+        const numDisplay = document.getElementById('number-display');
+        const frameCounter = document.getElementById('frame-counter');
+        const arrowPath = document.getElementById('arrow-path');
 
-        const { useState, useEffect } = React;
-        const { motion, AnimatePresence } = FramerMotion;
+        // 设置路径长度
+        const pathLength = arrowPath.getTotalLength();
+        arrowPath.style.strokeDasharray = pathLength;
 
-        // --- Remotion 核心算法：插值函数 ---
-        const interpolate = (frame, input, output) => {
-            const [inMin, inMax] = input;
-            const [outMin, outMax] = output;
-            if (frame <= inMin) return outMin;
-            if (frame >= inMax) return outMax;
-            const progress = (frame - inMin) / (inMax - inMin);
-            return outMin + (outMax - outMin) * progress;
-        };
+        // 插值函数
+        function interpolate(value, inMin, inMax, outMin, outMax) {
+            if (value <= inMin) return outMin;
+            if (value >= inMax) return outMax;
+            return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin);
+        }
 
-        const App = () => {
-            const [frame, setFrame] = useState(0);
-            const fps = 30;
-            const durationFrames = 150; // 5秒
+        // 刷新画面
+        function update(frame) {
+            // 1. 更新帧计数
+            frameCounter.innerText = `FRAME: ${frame}`;
 
-            useEffect(() => {
-                const timer = setInterval(() => {
-                    setFrame(prev => (prev + 1) % durationFrames);
-                }, 1000 / fps);
-                return () => clearInterval(timer);
-            }, []);
+            // 2. 更新数字 (第10帧到第100帧，从0增加到1,250,800)
+            const numValue = Math.floor(interpolate(frame, 10, 100, 0, 1250800));
+            numDisplay.innerText = numValue.toLocaleString();
 
-            // 计算当前数字（从 0 到 99,840）
-            const currentNum = Math.floor(interpolate(frame, [10, 80], [0, 99840]));
-            // 计算箭头生长进度
-            const pathProgress = interpolate(frame, [20, 50], [0, 1]);
+            // 3. 更新箭头 (第20帧到第60帧生长)
+            const progress = interpolate(frame, 20, 60, 0, 1);
+            arrowPath.style.strokeDashoffset = pathLength * (1 - progress);
+            arrowPath.style.opacity = progress > 0 ? 1 : 0;
+        }
 
-            return (
-                <div className="flex flex-col items-center">
-                    <div id="canvas-wrapper">
-                        {/* 场景层 */}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center p-20">
-                            
-                            {/* 1. AE 风格滚动数字 */}
-                            <motion.div 
-                                style={{ 
-                                    fontSize: '140px', 
-                                    fontWeight: '900', 
-                                    fontFamily: 'monospace',
-                                    color: '#22d3ee',
-                                    textShadow: '0 0 30px rgba(34,211,238,0.4)'
-                                }}
-                            >
-                                {currentNum.toLocaleString()}
-                            </motion.div>
+        // 自动播放循环
+        let currentFrame = 0;
+        function animate() {
+            currentFrame = (currentFrame + 1) % 151;
+            slider.value = currentFrame;
+            update(currentFrame);
+            requestAnimationFrame(animate);
+        }
 
-                            {/* 2. 动态生长箭头 */}
-                            <svg width="200" height="100" viewBox="0 0 100 50" className="mt-10">
-                                <path
-                                    d="M10 25 L90 25 M75 10 L90 25 L75 40"
-                                    fill="none"
-                                    stroke="#22d3ee"
-                                    strokeWidth="5"
-                                    strokeDasharray="100"
-                                    strokeDashoffset={100 - (pathProgress * 100)}
-                                    strokeLinecap="round"
-                                />
-                            </svg>
+        // 监听手动拖动
+        slider.addEventListener('input', (e) => {
+            currentFrame = parseInt(e.target.value);
+            update(currentFrame);
+        });
 
-                            {/* 底部装饰 */}
-                            <div className="absolute bottom-10 left-10 text-cyan-900 font-bold tracking-widest uppercase">
-                                Remote Generation Active // Frame: {frame}
-                            </div>
-                        </div>
-
-                        {/* 模拟 AE 扫描线叠加层 */}
-                        <div className="absolute inset-0 pointer-events-none border-[20px] border-white/5 opacity-30"></div>
-                    </div>
-
-                    {/* 控制台操作区 */}
-                    <div className="mt-8 bg-slate-800/50 p-6 rounded-2xl border border-white/10 w-full max-w-2xl">
-                        <input 
-                            type="range" min="0" max={durationFrames - 1} value={frame}
-                            onChange={(e) => setFrame(parseInt(e.target.value))}
-                            className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
-                        />
-                        <div className="flex justify-between mt-4 text-cyan-200/50 font-mono text-xs">
-                            <span>TIMELINE: 00:00</span>
-                            <span className="text-cyan-400">STATUS: PREVIEWING FRAME {frame}</span>
-                            <span>00:05</span>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        // 启动动画
+        animate();
     </script>
 </body>
 </html>
